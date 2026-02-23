@@ -1,0 +1,4 @@
+nox
+numpy
+pytest
+torch
