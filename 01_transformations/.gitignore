@@ -1,0 +1,8 @@
+/Temp
+/Logs
+/Library
+/UserSettings
+# Automatically generated project files
+*.sln
+*.csproj
+*.DS_Store
