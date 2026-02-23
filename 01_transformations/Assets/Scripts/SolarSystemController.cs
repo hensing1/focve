@@ -51,6 +51,30 @@ public class SolarSystemController : MonoBehaviour
         ResetToIdentity(moon.transform);
 
         // TODO implement
+        sun.localScale = sunRadius * Vector3.one;
+        earth.localScale = earthRadius * Vector3.one;
+        moon.localScale = moonRadius * Vector3.one;
+        
+        sun.Rotate(0, -360 * time / sunRotationPeriod, 0);
+
+        earth.Translate(sunEarthDistance, 0, 0);
+        earth.RotateAround(Vector3.zero, Vector3.up, -360 * time / sunEarthRotationPeriod);
+        earth.RotateAround(earth.localPosition, Vector3.up, -360 * time / earthRotationPeriod);
+
+        moon.Translate(sunEarthDistance, 0, 0);
+        moon.RotateAround(Vector3.zero, Vector3.up, -360 * time / sunEarthRotationPeriod);
+        moon.Translate(earthMoonDistance, 0, 0);
+        moon.RotateAround(earth.localPosition, Vector3.up, -360 * time / earthMoonRotationPeriod);
+
+        // sun.localRotation = Quaternion.Euler(new Vector3(0, -360 * time / sunRotationPeriod, 0));
+        // earth.localRotation = Quaternion.Euler(new Vector3(0, -360 * time / earthRotationPeriod, 0));
+        //
+        // Matrix4x4 earthRotation = Matrix4x4.Rotate(Quaternion.Euler(0, -360 * time / sunEarthRotationPeriod, 0));
+        // earth.localPosition = earthRotation.MultiplyPoint(new Vector3(sunEarthDistance, 0, 0));
+        //
+        // Matrix4x4 moonRotation = Matrix4x4.Rotate(Quaternion.Euler(0, -360 * time / earthMoonRotationPeriod, 0));
+        // Vector3 earthToMoon = moonRotation.MultiplyPoint(new Vector3(earthMoonDistance, 0, 0));
+        // moon.localPosition = earth.localPosition + earthToMoon;
 
     }
 
