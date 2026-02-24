@@ -1,0 +1,6 @@
+numpy
+pytest
+torch
+opencv-contrib-python
+imageio
+nox
