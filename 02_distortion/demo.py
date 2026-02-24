@@ -47,4 +47,4 @@ if image_undist.ndim == 3 and image_undist.shape[-1] == 1:
     image_undist = image_undist[...,0]
 
 iio.imwrite("demo_original.png", image)
-iio.imwrite("demo_undistorted.png", image_undist)
+iio.imwrite("demo_undistorted.png", image_undist.astype(np.uint8))
