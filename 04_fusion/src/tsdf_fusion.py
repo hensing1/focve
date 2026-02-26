@@ -17,6 +17,19 @@ def project_points(
 
     # TODO Implement ...
 
+    points_h = torch.cat(
+        [points, torch.ones((N, 1), dtype=points.dtype, device=points.device)], dim=1
+    )
+    points_cam_h = (T @ points_h.T).T
+    points_cam = points_cam_h[:, :3]
+
+    pixels_h = (K @ points_cam.T).T
+    z = points_cam[:, 2:3]
+
+    pixels[:, 0:1] = pixels_h[:, 0:1] / z
+    pixels[:, 1:2] = pixels_h[:, 1:2] / z
+    points_z[:, :] = z
+
     return pixels, points_z
 
 
@@ -32,6 +45,11 @@ def compute_tsdf_and_weight_from_depth(
     points_w = torch.empty_like(depths)
 
     # TODO Implement ...
+
+    sdf = depths - points_z
+    points_tsdf[:, :] = torch.clamp(sdf, -truncation_region, truncation_region)
+    points_w[:, :] = (sdf > -truncation_region).to(depths.dtype)
+    points_w[depths <= 0] = 0.0
 
     return points_tsdf, points_w
 
@@ -53,6 +71,16 @@ def integrate_values(
     W_new = torch.empty_like(W_old)
 
     # TODO Implement ...
+
+
+    W_new[:, :] = W_old + w
+
+    tsdf_num = W_old * TSDF_old + w * tsdf
+    color_num = W_old * COLOR_old + w * color
+
+    nonzero = W_new > 0
+    TSDF_new[:, :] = torch.where(nonzero, tsdf_num / W_new, torch.zeros_like(TSDF_old))
+    COLOR_new[:, :] = torch.where(nonzero, color_num / W_new, torch.zeros_like(COLOR_old))
 
     return TSDF_new, COLOR_new, W_new
 
