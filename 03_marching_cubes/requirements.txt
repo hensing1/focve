@@ -1,0 +1,6 @@
+nox
+numpy
+polyscope
+pytest
+torch
+tqdm
