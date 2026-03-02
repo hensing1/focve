@@ -1,0 +1,12 @@
+/Temp
+/Logs
+/Library
+/UserSettings
+# Automatically generated project files
+*.sln
+*.csproj
+*.DS_Store
+Assets/Resources/bonn_tele_bench_023_f00024
+Assets/Resources/bonn_tele_bench_023_f00024.meta
+Assets/Resources/bonn_tele_bench_023_c0012
+Assets/Resources/bonn_tele_bench_023_c0012.meta
