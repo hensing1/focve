@@ -1,0 +1,8 @@
+nox
+numpy
+git+https://github.com/NVlabs/nvdiffrast.git
+Pillow
+polyscope
+pytest
+torch
+trimesh

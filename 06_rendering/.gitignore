@@ -1,0 +1,7 @@
+__pycache__
+.*_cache
+*.py[cod]
+.nox
+.polyscope.ini
+imgui.ini
+*.DS_Store
