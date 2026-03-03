@@ -16,33 +16,37 @@ def srgb_to_rgb(f: torch.Tensor) -> torch.Tensor:
 def rgb_to_srgb(
     f: torch.Tensor  # N x 3
 ) -> torch.Tensor:  # N x 3
-    result = torch.empty_like(f)
-
-    # TODO Implement ...
-
-    return result
+    return torch.where(
+        f <= 0.0031308,
+        f * 12.92,
+        1.055 * torch.pow(f, 1/2.4) - 0.055
+    )
 
 
 def distribution_ggx(
     NdotH: torch.Tensor,  # N x 1
     roughness: torch.Tensor,  # N x 1
 ) -> torch.Tensor:  # N x 1
-    result = torch.empty_like(NdotH)
 
-    # TODO Implement ...
+    alpha = roughness ** 2
+    alpha_sq = alpha ** 2
+    temp = (NdotH ** 2) * (alpha_sq - 1) + 1
 
-    return result
+    return alpha_sq / (torch.pi * (temp ** 2))
 
 
 def geometry_ggx(
     NdotV: torch.Tensor,  # N x 1
     roughness: torch.Tensor,  # N x 1
 ) -> torch.Tensor:  # N x 1
-    L = torch.empty_like(NdotV)
 
-    # TODO Implement ...
+    NdotV_sq = NdotV ** 2
+    alpha = roughness ** 2
+    alpha_sq = alpha ** 2
 
-    return L
+    result = (-1 + torch.sqrt((NdotV_sq*(1-alpha_sq) + alpha_sq)/torch.clamp(NdotV_sq, 1e-5))) / 2
+
+    return result
 
 
 def geometry_smith(
@@ -60,18 +64,15 @@ def fresnel_schlick(
     F0: torch.Tensor,  # N x 3
     VdotH: torch.Tensor,  # N x 1
 ) -> torch.Tensor:  # N x 3
-    result = torch.empty_like(F0)
 
-    # TODO Implement ...
-
-    return result
+    return F0 + (1-F0) * ((1-VdotH) ** 5)
 
 
 def brdf(
     light_dir: torch.Tensor,  # N x 3
     view_dirs: torch.Tensor,  # N x 3
     vertex_normals: torch.Tensor,  # N x 3
-    diffuse: torch.Tensor,  # N x 3
+    base_color: torch.Tensor,  # N x 3
     metallic: torch.Tensor,  # N x 1
     roughness: torch.Tensor,  # N x 1
 ) -> torch.Tensor:  # N x 3
@@ -80,13 +81,16 @@ def brdf(
     NdotL = torch.clamp(torch.sum(light_dir * vertex_normals, dim=1).unsqueeze(-1), 0)
     NdotV = torch.clamp(torch.sum(view_dirs * vertex_normals, dim=1).unsqueeze(-1), 0)
     VdotH = torch.clamp(torch.sum(view_dirs * H, dim=1).unsqueeze(-1), 0)
-    F0 = (1.0 - metallic) * 0.04 + metallic * diffuse
+    F0 = (1.0 - metallic) * 0.04 + metallic * base_color
 
-    brdf = torch.full_like(light_dir, -1.0)
+    diffuse = (1 - metallic) * base_color / torch.pi
+    specular = (
+        distribution_ggx(NdotH, roughness) *
+        geometry_smith(NdotL, NdotV, roughness) *
+        fresnel_schlick(F0, VdotH)
+    ) / (torch.clamp(4 * NdotL * NdotV, 1e-5))
 
-    # TODO implement ...
-
-    return brdf
+    return diffuse + specular
 
 
 class Camera:
