@@ -20,7 +20,13 @@ def convert_intrinsics_cv_to_gl(
 ) -> torch.Tensor:  # 4 x 4
     P_clip = torch.zeros((4, 4), dtype=torch.float32).cuda()
 
-    # TODO implement ...
+    P_clip[0, 0] = 2 * fx / width
+    P_clip[1, 1] = 2 * fy / height
+    P_clip[0, 2] = 1 - 2 * cx / width
+    P_clip[1, 2] = 2 * cy / height - 1
+    P_clip[2, 2] = ((-zFar - zNear) / (zFar - zNear))
+    P_clip[2, 3] = ((-2 * zFar * zNear) / (zFar - zNear))
+    P_clip[3, 2] = -1
 
     return P_clip
 
@@ -30,22 +36,16 @@ def gradient_descent(
     gradients: torch.Tensor,  # 1 x h x w x 3
     lr: float,
 ) -> torch.Tensor:  # 1 x h x w x 3
-    result = torch.empty_like(parameters)
 
-    # TODO implement ...
-
-    return result
+    return parameters - lr * gradients
 
 
 def loss_L1(
     estimate: torch.Tensor,  # 1 x h x w x 3
     target: torch.Tensor,  # 1 x h x w x 3
 ) -> torch.Tensor:  # 1
-    loss = torch.tensor([0.0], requires_grad=True).cuda()
 
-    # TODO implement ...
-
-    return loss
+    return torch.sum(torch.abs(estimate - target))
 
 
 def optimize_step(
@@ -54,10 +54,14 @@ def optimize_step(
     scene: Scene,
     cameras: list[Camera],
 ) -> torch.Tensor:  # 1
+
+    optimizer.zero_grad()
     L = torch.tensor([0.0], requires_grad=True).cuda()
-
-    # TODO implement ...
-
+    for camera in cameras:
+        estimate = renderer.render(scene, camera)
+        L = L + loss_L1(estimate, camera.image)
+    L.backward()
+    optimizer.step()
     return L
 
 
