@@ -1,0 +1,9 @@
+nox
+numpy
+Pillow
+polyscope
+pytest
+scikit-image
+scipy
+torch
+tqdm
