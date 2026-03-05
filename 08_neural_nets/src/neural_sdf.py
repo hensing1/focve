@@ -10,30 +10,35 @@ class SDFMLP(nn.Module):
     def __init__(self, n_neurons: int, activation_fn: nn.Module) -> None:
         super().__init__()
 
-        self.net = None
-
-        # TODO: Setup the neural network layer
-
-        return
+        self.net = nn.Sequential(
+            nn.Linear(3, n_neurons),
+            activation_fn,
+            nn.Linear(n_neurons, n_neurons),
+            activation_fn,
+            nn.Linear(n_neurons, n_neurons),
+            activation_fn,
+            nn.Linear(n_neurons, 1)
+        )
 
     def forward(
         self,
         points: torch.Tensor,  # batchsize x 3
     ) -> torch.Tensor:  # batchsize x 1
-        values = torch.zeros(points.shape[0], 1)
-
-        # TODO: Implement the forward function
-
-        return values
+        return self.net(points)
 
 
 def compute_network_gradient(
     network: nn.Module,
     points: torch.Tensor,  # batchsize x 3
 ) -> torch.Tensor:  # batchsize x 3
-    gradients = torch.zeros_like(points, requires_grad=True)
+    points.requires_grad_(True)
 
-    # TODO: Implement the compute_network_gradient function
+    output = network.forward(points)
+    gradients = torch.autograd.grad(outputs=output,
+                                    inputs=points,
+                                    grad_outputs=torch.ones_like(output),
+                                    create_graph=True)[0]
+    # output.backward(torch.ones_like(output))
 
     return gradients
 
@@ -46,9 +51,9 @@ class SurfaceLoss(nn.Module):
         self,
         values: torch.Tensor,  # batchsize x 1
     ) -> torch.Tensor:  # scalar
-        result = torch.tensor(0.0, requires_grad=True, device=values.device)
 
-        # TODO: Implement the forward function
+        result = torch.sum(torch.abs(values)) / torch.numel(values)
+        result.requires_grad_(True)
 
         return result
 
@@ -61,9 +66,9 @@ class EikonalLoss(nn.Module):
         self,
         gradients: torch.Tensor,  # batchsize x 3
     ) -> torch.Tensor:  # scalar
-        result = torch.tensor(0.0, requires_grad=True, device=gradients.device)
 
-        # TODO: Implement the forward function
+        result = torch.sum((torch.linalg.vector_norm(gradients, dim=-1) - 1) ** 2) / gradients.shape[0]
+        result.requires_grad_(True)
 
         return result
 
@@ -76,9 +81,8 @@ class BoundaryLoss(nn.Module):
         self,
         values: torch.Tensor,  # batchsize x 1
     ) -> torch.Tensor:  # scalar
-        result = torch.tensor(0.0, requires_grad=True, device=values.device)
-
-        # TODO: Implement the forward function
+        result = torch.sum(torch.max(torch.zeros_like(values), -values)) / torch.numel(values)
+        result.requires_grad_(True)
 
         return result
 
@@ -100,12 +104,9 @@ class Trainer(nn.Module):
         self.eikonal_lambda = eikonal_weight
         self.boundary_lambda = boundary_weight
 
-        self.model = None
-        self.optimizer = None
+        self.model = SDFMLP(n_neurons, activation_fn)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), learn_rate)
 
-        # TODO: Setup the MLP and optimizer
-
-        return
 
     def step(
         self,
@@ -118,20 +119,16 @@ class Trainer(nn.Module):
         torch.Tensor,  # scalar
         torch.Tensor,  # scalar
     ]:
-        surface_loss = torch.tensor(
-            0.0, requires_grad=True, device=surface_points.device
-        )
-        eikonal_loss = torch.tensor(
-            0.0, requires_grad=True, device=volume_points.device
-        )
-        boundary_loss = torch.tensor(
-            0.0, requires_grad=True, device=boundary_points.device
-        )
-        combined_loss = torch.tensor(
-            0.0, requires_grad=True, device=surface_points.device
-        )
 
-        # TODO: Implement the step function
+        self.optimizer.zero_grad()
+        surface_loss = self.surface_loss_fn.forward(self.model.forward(surface_points))
+        eikonal_loss = self.eikonal_loss_fn.forward(compute_network_gradient(self.model, volume_points))
+        boundary_loss = self.boundary_loss_fn.forward(self.model.forward(boundary_points))
+        combined_loss = self.surface_lambda * surface_loss + \
+                        self.eikonal_lambda * eikonal_loss + \
+                        self.boundary_lambda * boundary_loss
+        combined_loss.backward()
+        self.optimizer.step()
 
         return (
             surface_loss,
@@ -144,8 +141,13 @@ class Trainer(nn.Module):
         self,
         points: torch.Tensor,  # batchsize x 3
     ) -> torch.Tensor:  # batchsize x 1
-        values = torch.zeros(points.shape[0], 1, device=points.device)
+        # values = torch.zeros(points.shape[0], 1, device=points.device)
 
         # TODO: Implement the eval function
+        # self.model.training = False
+        self.model.eval()
+        with torch.no_grad():
+            values = self.model.forward(points)
+        self.model.train()
 
         return values
