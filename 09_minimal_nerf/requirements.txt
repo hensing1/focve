@@ -1,0 +1,8 @@
+nox
+numpy
+pytest
+torch
+torchvision
+imageio
+tqdm
+tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/@075158a70b87dba8729188a9cadc9411cfa4b71d#subdirectory=bindings/torch
