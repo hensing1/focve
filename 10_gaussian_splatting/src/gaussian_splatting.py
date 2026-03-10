@@ -31,7 +31,15 @@ def compute_jacobians(
     """
     J = torch.zeros((means.shape[0], 2, 3), device=means.device)
 
-    # TODO: implement
+    mu_x = means[:, 0]
+    mu_y = means[:, 1]
+    mu_z = means[:, 2]
+    mu_z_2 = mu_z ** 2
+
+    J[:, 0, 0] = fx / mu_z
+    J[:, 1, 1] = fy / mu_z
+    J[:, 0, 2] = (-fx * mu_x) / mu_z_2
+    J[:, 1, 2] = (-fy * mu_y) / mu_z_2
 
     return J
 
@@ -46,11 +54,8 @@ def get_covariance_2d(
     Returns a tensor (N, 2, 2), where tensor[k] is the covariance of the 2D
     screen coordinates of the k-th splat.
     """
-    cov_2d = torch.zeros((jacobians.shape[0], 2, 2), device=jacobians.device)
 
-    # TODO: implement
-
-    return cov_2d
+    return jacobians @ cov_3d @ jacobians.transpose(1, 2)
 
 
 def get_bounding_boxes(
@@ -71,7 +76,22 @@ def get_bounding_boxes(
     min_xy = torch.zeros((covs_2d.shape[0], 2), device=covs_2d.device)
     max_xy = torch.zeros((covs_2d.shape[0], 2), device=covs_2d.device)
 
-    # TODO: implement
+    # eigenvals = torch.real(torch.linalg.eigvals(covs_2d))
+    # max_eigenvals = torch.max(eigenvals, 1).values
+    # max_std_devs = torch.sqrt(max_eigenvals)
+
+    # min_xy[:, 0] = -num_std_devs * max_std_devs
+    # min_xy[:, 1] = -num_std_devs * max_std_devs
+    # max_xy[:, 0] = num_std_devs * max_std_devs
+    # max_xy[:, 1] = num_std_devs * max_std_devs
+
+    std_devs = torch.sqrt(torch.diagonal(covs_2d, dim1=1, dim2=2))
+
+    min_xy[:, 0] = -num_std_devs * std_devs[:, 0]
+    min_xy[:, 1] = -num_std_devs * std_devs[:, 1]
+    max_xy[:, 0] = num_std_devs * std_devs[:, 0]
+    max_xy[:, 1] = num_std_devs * std_devs[:, 1]
+
 
     return min_xy, max_xy
 
@@ -88,13 +108,22 @@ def compute_alpha_blending_weights(
     Returns a tensor (N, H, W), where tensor[k, y, x] is the blending weight
     of the k-th gaussian at pixel (y, x).
     """
-    alpha = torch.zeros(
-        (means_2d.shape[0], *pixel_coords.shape[:2]), device=means_2d.device
-    )
 
-    # TODO: implement
+    deviations = pixel_coords[None, :, :, :] - means_2d[:, None, None, :]
+    # deviations.shape == N x H x W x 2
 
-    return alpha
+    deviations = deviations[..., None]
+    # deviations.shape == N x H x W x 2 x 1
+
+    inv_covs_2d = inv_covs_2d[:, None, None, ...]
+    # inv_covs_2d.shape == N x 1 x 1 x 2 x 2
+
+    gauss = torch.exp(-0.5 * deviations.transpose(-2, -1) @ inv_covs_2d @ deviations)
+    gauss = gauss.squeeze()
+    # gauss.shape == N x H x W
+
+    alphas = opacities[..., None] * gauss
+    return alphas
 
 
 def compute_image_positional_gradients(
@@ -108,11 +137,7 @@ def compute_image_positional_gradients(
     Returns a tensor (N, 2), where tensor[k] is the gradient of the image loss
     w.r.t. the 2D image coordinates of the k-th splat.
     """
-    grads = torch.zeros(means_2d.shape, device=means_2d.device)
-
-    # TODO: implement
-
-    return grads
+    return torch.autograd.grad(image_loss, means_2d)[0]
 
 
 def compute_2d_quantities(splats: GaussianSplats, camera: Camera):
