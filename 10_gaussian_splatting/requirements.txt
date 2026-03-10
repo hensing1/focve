@@ -1,0 +1,8 @@
+nox
+numpy
+polyscope
+pytest
+torch
+trimesh
+tqdm
+git+https://github.com/rahul-goel/fused-ssim/
