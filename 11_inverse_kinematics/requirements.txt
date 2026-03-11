@@ -1,0 +1,5 @@
+nox
+pytest
+numpy
+torch
+pygame
